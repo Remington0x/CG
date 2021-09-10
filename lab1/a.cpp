@@ -7,9 +7,9 @@
 int main() {
     glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
 	GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", nullptr, nullptr);
 	if (window == nullptr)
@@ -29,7 +29,7 @@ int main() {
 
 	int width, height;
 	glfwGetFramebufferSize(window, &width, &height);
-  
+
 	glViewport(0, 0, width, height);
 
 	while(!glfwWindowShouldClose(window))
@@ -39,6 +39,6 @@ int main() {
 	}
 
 	glfwTerminate();
-    
+
     return 0;
 }
