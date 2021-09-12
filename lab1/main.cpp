@@ -17,6 +17,10 @@ double plotFunc(double x, double a) {
     return posY;
 }
 
+void delFromArr(GLfloat* arr, int& vertCount, int index);
+//nan destroyer
+void nanDestroyer(GLfloat* arr, int& vertCount);
+
 
 
 const GLchar* vertexShaderSource = "#version 330 core\n"
@@ -108,68 +112,56 @@ int main() {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-
-
-    // GLfloat vertices[] = {
-    //     -0.5f, -0.5f, 0.0f,
-    //     0.5f, -0.5f, 0.0f,
-    //     0.0f,  0.5f, 0.0f
-    // };
-
     const double step = 0.001;
 
-    // int vertCount = 2;
-    // int index = 0;
-    // GLfloat vertices[] = {
-    //     -1, 0, 0,
-    //     0, 0, 0,
-    //     0, -0, 0,
-    //     1, 0, 0
-    // };
+    const GLfloat a = 0.5;
 
-
-    //const GLfloat a = 1.0;
-
-    int vertCount = 2 * (1 / step);
-    GLfloat* vertices = (GLfloat*)malloc(sizeof(GLfloat) * 3 * vertCount * 2);
+    int stepCount = 2 * (1 / step);
+    int vertCount = (stepCount + 1) * 2;
+    int indCount = vertCount * 3;
+    GLfloat* vertices = (GLfloat*)malloc(sizeof(GLfloat) * indCount);
     double x;
     double y;
     int index = 0;
-    vertices[index] = -1.0f;
-    vertices[index + 1] = 0.0f;
-    vertices[index + 2] = 0.0f;
-    x = -1.0 + step;
-    for (index = 3; index / 3 < vertCount * 2 - 1; index += 6) {
-        // std::cout << "index / 3 = " << index / 3 << ", x = " << x << std::endl;
-        y = plotFunc(x, 1);
+    // y = plotFunc(1.0, a);
+    // vertices[index] = -1.0f;
+    // vertices[index + 1] = (GLfloat)y;
+    // vertices[index + 2] = 0.0f;
+    x = -1.0;
+    for (index = 0; index < indCount / 2; index += 3) {
+        //std::cout << "index / 3 = " << index / 3 << ", x = " << x << std::endl;
+        y = plotFunc(x, a);
         vertices[index] = (GLfloat)x;
         vertices[index + 1] = (GLfloat)y;
         vertices[index + 2] = 0.0f;
-        vertices[index + 3] = (GLfloat)x;
-        vertices[index + 4] = -(GLfloat)y;
-        vertices[index + 5] = 0.0f;
+        vertices[indCount - 1 - index - 2] = (GLfloat)x;
+        vertices[indCount - 1 - index - 1] = -(GLfloat)y;
+        vertices[indCount - 1 - index] = 0.0f;
         x += step;
     }
-    vertices[index] = 1.0f;
-    vertices[index + 1] = 0.0f;
-    vertices[index + 2] = 0.0f;
-    //std::cout << "index count = " << index / 3 << ", vertCount * 2 = " << vertCount * 2 << std::endl;
+
+    // std::cout << "vertCount = " << vertCount << std::endl;
+    nanDestroyer(vertices, vertCount);
+    // std::cout << "vertCount = " << vertCount << std::endl;
+    // y = plotFunc(1.0, a);
+    // vertices[index] = 1.0f;
+    // vertices[index + 1] = (GLfloat)y;
+    // vertices[index + 2] = 0.0f;
+    //std::cout << "index count = " << index / 3 << ", vertCount = " << vertCount << std::endl;
     // index = 0;
-    // while (index / 3 < vertCount * 2 - 1) {
-    //     std::cout << vertices[index] << '\t' << vertices[index + 1] << '\t' << vertices[index + 2] << '\t';
-    //     std::cout << vertices[index + 3] << '\t' << vertices[index + 4] << '\t' << vertices[index + 5] << '\t';
-    //     std::cout << std::endl;
-    //     index += 6;
+    // while (index < indCount) {
+    //     std::cout << vertices[index] << '\t' << vertices[index + 1] << '\t' << vertices[index + 2] << '\n';
+    //     index += 3;
     // }
 
-    GLuint VBO, VAO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    GLuint plot_VBO, plot_VAO;
+    glGenVertexArrays(1, &plot_VAO);
+    glGenBuffers(1, &plot_VBO);
 
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindVertexArray(plot_VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, plot_VBO);
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vertCount * 2 * 3, vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vertCount * 3, vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
     glEnableVertexAttribArray(0);
@@ -184,17 +176,35 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, vertCount * 2);
+        glBindVertexArray(plot_VAO);
+        glDrawArrays(GL_LINE_LOOP, 0, vertCount);
+        //glDrawArrays(GL_POINTS, 0, vertCount);
         glBindVertexArray(0);
 
     	glfwSwapBuffers(window);
 	}
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    //free(vertices);
+    glDeleteVertexArrays(1, &plot_VAO);
+    glDeleteBuffers(1, &plot_VBO);
+    free(vertices);
 
 	glfwTerminate();
 
     return 0;
+}
+
+void nanDestroyer(GLfloat* arr, int& vertCount) {
+    for (int i = vertCount * 3 - 3; i >= 0; i -= 3) {
+        if (abs(arr[i + 1]) != abs(arr[i + 1])) {
+            delFromArr(arr, vertCount, i);
+        }
+    }
+}
+
+void delFromArr(GLfloat* arr, int& vertCount, int index) {
+    for (int i = index + 3; i < vertCount * 3; i += 3) {
+        arr[i - 3] = arr[i];
+        arr[i - 2] = arr[i + 1];
+        arr[i - 1] = arr[i + 2];
+    }
+    --vertCount;
 }
