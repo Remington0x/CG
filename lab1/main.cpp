@@ -4,6 +4,9 @@
 #include <math.h>
 #include <iostream>
 
+GLuint ShaderCompilation(const GLchar* source, const int shaderType);
+GLuint MakeProgram(const GLuint shader1, const GLuint shader2);
+
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mode) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GL_TRUE);
@@ -21,7 +24,11 @@ void delFromArr(GLfloat* arr, int& vertCount, int index);
 //nan destroyer
 void nanDestroyer(GLfloat* arr, int& vertCount);
 
-
+const GLchar* axisShaderSource = "#version 330 core\n"
+    "out vec4 color;\n"
+    "void main() {\n"
+    "color = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n"
+    "}\n\0";
 
 const GLchar* vertexShaderSource = "#version 330 core\n"
     "layout (location = 0) in vec3 position;\n"
@@ -32,7 +39,7 @@ const GLchar* vertexShaderSource = "#version 330 core\n"
 const GLchar* fragmentShaderSource = "#version 330 core\n"
     "out vec4 color;\n"
     "void main() {\n"
-    "color = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "color = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
     "}\n\0";
 
 int main() {
@@ -70,45 +77,14 @@ int main() {
 
 
     //shaders
-    GLuint vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-    //Check for errors
-    GLint success;
-    GLchar infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-    	glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-    	std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
+    GLuint vertexShader = ShaderCompilation(vertexShaderSource, GL_VERTEX_SHADER);
+    GLuint fragmentShader = ShaderCompilation(fragmentShaderSource, GL_FRAGMENT_SHADER);
+    GLuint axisShader = ShaderCompilation(axisShaderSource, GL_FRAGMENT_SHADER);
 
-    GLuint fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    //Check for errors
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-    	glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-    	std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-    GLuint shaderProgram;
-    shaderProgram = glCreateProgram();
-
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    //Check for errors
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
+    GLuint shaderProgram = MakeProgram(vertexShader, fragmentShader);
+    GLuint shaderProgram2 = MakeProgram(vertexShader, axisShader);
     //if linking went ok, delete shaders
+    glDeleteShader(axisShader);
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
@@ -123,13 +99,8 @@ int main() {
     double x;
     double y;
     int index = 0;
-    // y = plotFunc(1.0, a);
-    // vertices[index] = -1.0f;
-    // vertices[index + 1] = (GLfloat)y;
-    // vertices[index + 2] = 0.0f;
     x = -1.0;
     for (index = 0; index < indCount / 2; index += 3) {
-        //std::cout << "index / 3 = " << index / 3 << ", x = " << x << std::endl;
         y = plotFunc(x, a);
         vertices[index] = (GLfloat)x;
         vertices[index + 1] = (GLfloat)y;
@@ -139,20 +110,7 @@ int main() {
         vertices[indCount - 1 - index] = 0.0f;
         x += step;
     }
-
-    // std::cout << "vertCount = " << vertCount << std::endl;
     nanDestroyer(vertices, vertCount);
-    // std::cout << "vertCount = " << vertCount << std::endl;
-    // y = plotFunc(1.0, a);
-    // vertices[index] = 1.0f;
-    // vertices[index + 1] = (GLfloat)y;
-    // vertices[index + 2] = 0.0f;
-    //std::cout << "index count = " << index / 3 << ", vertCount = " << vertCount << std::endl;
-    // index = 0;
-    // while (index < indCount) {
-    //     std::cout << vertices[index] << '\t' << vertices[index + 1] << '\t' << vertices[index + 2] << '\n';
-    //     index += 3;
-    // }
 
     GLuint plot_VBO, plot_VAO;
     glGenVertexArrays(1, &plot_VAO);
@@ -169,11 +127,46 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    GLfloat axisVertices[] = {
+        -1.0f,  0.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
+        0.0f, -1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f
+    };
+    GLuint axisIndices[] = {
+        0, 1, 4,
+        2, 3
+    };
+
+    GLuint axis_VAO, axis_VBO, axis_EBO;
+    glGenVertexArrays(1, &axis_VAO);
+    glGenBuffers(1, &axis_VBO);
+    glGenBuffers(1, &axis_EBO);
+
+    glBindVertexArray(axis_VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, axis_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(axisVertices), axisVertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, axis_EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(axisIndices), axisIndices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
 	while (!glfwWindowShouldClose(window)) {
     	glfwPollEvents();
 
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shaderProgram2);
+        glBindVertexArray(axis_VAO);
+        glDrawElements(GL_LINE_STRIP, 5, GL_UNSIGNED_INT, 0);
 
         glUseProgram(shaderProgram);
         glBindVertexArray(plot_VAO);
@@ -207,4 +200,39 @@ void delFromArr(GLfloat* arr, int& vertCount, int index) {
         arr[i - 1] = arr[i + 2];
     }
     --vertCount;
+}
+
+GLuint ShaderCompilation(const GLchar* source, const int shaderType) {
+    GLuint shader = glCreateShader(shaderType);
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+    //Check for errors
+    GLint success;
+    GLchar infoLog[512];
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if(!success)
+    {
+    	glGetShaderInfoLog(shader, 512, NULL, infoLog);
+    	std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
+    return shader;
+}
+
+GLuint MakeProgram(const GLuint shader1, const GLuint shader2) {
+    GLuint shaderProgram;
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, shader1);
+    glAttachShader(shaderProgram, shader2);
+    glLinkProgram(shaderProgram);
+    //Check for errors
+    GLint success;
+    GLchar infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
+    return shaderProgram;
 }
