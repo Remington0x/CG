@@ -4,6 +4,8 @@
 #include <math.h>
 #include <iostream>
 
+#include "shader.hpp"
+
 GLuint ShaderCompilation(const GLchar* source, const int shaderType);
 GLuint MakeProgram(const GLuint shader1, const GLuint shader2);
 
@@ -24,23 +26,23 @@ void delFromArr(GLfloat* arr, int& vertCount, int index);
 //nan destroyer
 void nanDestroyer(GLfloat* arr, int& vertCount);
 
-const GLchar* axisShaderSource = "#version 330 core\n"
-    "out vec4 color;\n"
-    "void main() {\n"
-    "color = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n"
-    "}\n\0";
+// const GLchar* axisShaderSource = "#version 330 core\n"
+//     "out vec4 color;\n"
+//     "void main() {\n"
+//     "color = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n"
+//     "}\n\0";
 
-const GLchar* vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 position;\n"
-    "void main() {\n"
-    "gl_Position = vec4(position.x, position.y, position.z, 1.0);\n"
-    "}\n\0";
+// const GLchar* vertexShaderSource = "#version 330 core\n"
+//     "layout (location = 0) in vec3 position;\n"
+//     "void main() {\n"
+//     "gl_Position = vec4(position.x, position.y, position.z, 1.0);\n"
+//     "}\n\0";
 
-const GLchar* fragmentShaderSource = "#version 330 core\n"
-    "out vec4 color;\n"
-    "void main() {\n"
-    "color = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
-    "}\n\0";
+// const GLchar* fragmentShaderSource = "#version 330 core\n"
+//     "out vec4 color;\n"
+//     "void main() {\n"
+//     "color = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
+//     "}\n\0";
 
 int main() {
     glfwInit();
@@ -76,17 +78,20 @@ int main() {
 	glViewport(0, 0, width, height);
 
 
-    //shaders
-    GLuint vertexShader = ShaderCompilation(vertexShaderSource, GL_VERTEX_SHADER);
-    GLuint fragmentShader = ShaderCompilation(fragmentShaderSource, GL_FRAGMENT_SHADER);
-    GLuint axisShader = ShaderCompilation(axisShaderSource, GL_FRAGMENT_SHADER);
+    // //shaders
+    // GLuint vertexShader = ShaderCompilation(vertexShaderSource, GL_VERTEX_SHADER);
+    // GLuint fragmentShader = ShaderCompilation(fragmentShaderSource, GL_FRAGMENT_SHADER);
+    // GLuint axisShader = ShaderCompilation(axisShaderSource, GL_FRAGMENT_SHADER);
 
-    GLuint shaderProgram = MakeProgram(vertexShader, fragmentShader);
-    GLuint shaderProgram2 = MakeProgram(vertexShader, axisShader);
-    //if linking went ok, delete shaders
-    glDeleteShader(axisShader);
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    // GLuint shaderProgram = MakeProgram(vertexShader, fragmentShader);
+    // GLuint shaderProgram2 = MakeProgram(vertexShader, axisShader);
+    // //if linking went ok, delete shaders
+    // glDeleteShader(axisShader);
+    // glDeleteShader(vertexShader);
+    // glDeleteShader(fragmentShader);
+
+    Shader shader1("vertexShader.vert", "fragmentShader.frag");
+    Shader shader2("vertexShader.vert", "axisShader.frag");
 
     const double step = 0.001;
 
@@ -164,11 +169,11 @@ int main() {
         glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(shaderProgram2);
+        shader2.Use();
         glBindVertexArray(axis_VAO);
         glDrawElements(GL_LINE_STRIP, 5, GL_UNSIGNED_INT, 0);
 
-        glUseProgram(shaderProgram);
+        shader1.Use();
         glBindVertexArray(plot_VAO);
         glDrawArrays(GL_LINE_LOOP, 0, vertCount);
         //glDrawArrays(GL_POINTS, 0, vertCount);
