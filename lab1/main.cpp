@@ -9,53 +9,35 @@
 GLuint ShaderCompilation(const GLchar* source, const int shaderType);
 GLuint MakeProgram(const GLuint shader1, const GLuint shader2);
 
-void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mode) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-}
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+
+void vertexRecount(const GLfloat* vertices, GLfloat* drawVert, const int vertCount, const int width, const int height);
+
 
 //returns value of y for given x and a
-double plotFunc(double x, double a) {
-    double posY;
-    posY = sqrt((-2 * pow(x, 2) - a + sqrt(8 * a * pow(x, 2) + pow(a, 2))) / 2.0);
-    return posY;
-}
+double plotFunc(double x, double a);
 
 void delFromArr(GLfloat* arr, int& vertCount, int index);
 //nan destroyer
 void nanDestroyer(GLfloat* arr, int& vertCount);
 
-// const GLchar* axisShaderSource = "#version 330 core\n"
-//     "out vec4 color;\n"
-//     "void main() {\n"
-//     "color = vec4(0.0f, 0.0f, 0.0f, 1.0f);\n"
-//     "}\n\0";
 
-// const GLchar* vertexShaderSource = "#version 330 core\n"
-//     "layout (location = 0) in vec3 position;\n"
-//     "void main() {\n"
-//     "gl_Position = vec4(position.x, position.y, position.z, 1.0);\n"
-//     "}\n\0";
+bool IS_WINDOW_RESIZED = false;
 
-// const GLchar* fragmentShaderSource = "#version 330 core\n"
-//     "out vec4 color;\n"
-//     "void main() {\n"
-//     "color = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
-//     "}\n\0";
 
 int main() {
     glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
 	if(!glfwInit()) {
     	return -1;
 	}
 
-	GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(800, 600, "Computer Graphics Lab 1", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -65,6 +47,7 @@ int main() {
 	glfwMakeContextCurrent(window);
 
     glfwSetKeyCallback(window, keyCallback);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 	glewExperimental = GL_TRUE;
 	if (glewInit() != GLEW_OK)
@@ -77,25 +60,12 @@ int main() {
 	glfwGetFramebufferSize(window, &width, &height);
 	glViewport(0, 0, width, height);
 
-
-    // //shaders
-    // GLuint vertexShader = ShaderCompilation(vertexShaderSource, GL_VERTEX_SHADER);
-    // GLuint fragmentShader = ShaderCompilation(fragmentShaderSource, GL_FRAGMENT_SHADER);
-    // GLuint axisShader = ShaderCompilation(axisShaderSource, GL_FRAGMENT_SHADER);
-
-    // GLuint shaderProgram = MakeProgram(vertexShader, fragmentShader);
-    // GLuint shaderProgram2 = MakeProgram(vertexShader, axisShader);
-    // //if linking went ok, delete shaders
-    // glDeleteShader(axisShader);
-    // glDeleteShader(vertexShader);
-    // glDeleteShader(fragmentShader);
-
     Shader shader1("vertexShader.vert", "fragmentShader.frag");
     Shader shader2("vertexShader.vert", "axisShader.frag");
 
     const double step = 0.001;
 
-    const GLfloat a = 0.5;
+    const GLfloat a = 1;
 
     int stepCount = 2 * (1 / step);
     int vertCount = (stepCount + 1) * 2;
@@ -117,6 +87,13 @@ int main() {
     }
     nanDestroyer(vertices, vertCount);
 
+    GLfloat* drawVert = (GLfloat*)malloc(sizeof(GLfloat) * indCount);
+    for (int i = 2; i < vertCount * 3; i += 3) {
+        drawVert[i] = 0.0f;
+    }
+    glfwGetWindowSize(window, &width, &height);
+    vertexRecount(vertices, drawVert, vertCount, width, height);
+
     GLuint plot_VBO, plot_VAO;
     glGenVertexArrays(1, &plot_VAO);
     glGenBuffers(1, &plot_VBO);
@@ -124,7 +101,7 @@ int main() {
     glBindVertexArray(plot_VAO);
     glBindBuffer(GL_ARRAY_BUFFER, plot_VBO);
 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vertCount * 3, vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vertCount * 3, drawVert, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
     glEnableVertexAttribArray(0);
@@ -166,6 +143,20 @@ int main() {
 	while (!glfwWindowShouldClose(window)) {
     	glfwPollEvents();
 
+        if (IS_WINDOW_RESIZED) {
+            glfwGetWindowSize(window, &width, &height);
+            //std::cout << width << " " << height << std::endl;
+            vertexRecount(vertices, drawVert, vertCount, width, height);
+
+            glBindBuffer(GL_ARRAY_BUFFER, plot_VBO);
+
+            glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vertCount * 3, drawVert, GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            IS_WINDOW_RESIZED = false;
+        }
+
         glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -176,14 +167,15 @@ int main() {
         shader1.Use();
         glBindVertexArray(plot_VAO);
         glDrawArrays(GL_LINE_LOOP, 0, vertCount);
-        //glDrawArrays(GL_POINTS, 0, vertCount);
         glBindVertexArray(0);
 
     	glfwSwapBuffers(window);
 	}
     glDeleteVertexArrays(1, &plot_VAO);
     glDeleteBuffers(1, &plot_VBO);
+    glDeleteBuffers(1, &axis_EBO);
     free(vertices);
+    free(drawVert);
 
 	glfwTerminate();
 
@@ -207,37 +199,43 @@ void delFromArr(GLfloat* arr, int& vertCount, int index) {
     --vertCount;
 }
 
-GLuint ShaderCompilation(const GLchar* source, const int shaderType) {
-    GLuint shader = glCreateShader(shaderType);
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-    //Check for errors
-    GLint success;
-    GLchar infoLog[512];
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-    	glGetShaderInfoLog(shader, 512, NULL, infoLog);
-    	std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-    return shader;
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+    IS_WINDOW_RESIZED = true;
+    //std::cout << width << " " << height << std::endl;
 }
 
-GLuint MakeProgram(const GLuint shader1, const GLuint shader2) {
-    GLuint shaderProgram;
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, shader1);
-    glAttachShader(shaderProgram, shader2);
-    glLinkProgram(shaderProgram);
-    //Check for errors
-    GLint success;
-    GLchar infoLog[512];
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n" << infoLog << std::endl;
+void vertexRecount(const GLfloat* vertices, GLfloat* newVert, const int vertCount, const int width, const int height) {
+    const double PLOT_SCALE = 0.8;
+    const double RATIO_BARRIER = 0.4;
+    double ratio = (double)height / width;
+    if (ratio < RATIO_BARRIER) {
+        ratio = ratio / RATIO_BARRIER;
+        //std::cout << "ratio is " << ratio << std::endl;
+        for (int i = 0; i < vertCount * 3; i += 3) {
+            newVert[i] = vertices[i] * ratio * PLOT_SCALE;
+            newVert[i + 1] = vertices[i + 1] * (1 / RATIO_BARRIER) * PLOT_SCALE;
+        }
+    } else {
+        ratio = 1 / ratio;
+        //std::cout << "ratio is " << ratio << std::endl;
+        for (int i = 0; i < vertCount * 3; i += 3) {
+            newVert[i] = vertices[i] * PLOT_SCALE;
+            newVert[i + 1] = vertices[i + 1] * ratio * PLOT_SCALE;
+        }
     }
+    
+}
 
-    return shaderProgram;
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mode) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+}
+
+double plotFunc(double x, double a) {
+    double posY;
+    posY = sqrt((-2 * x * x - a + sqrt(8 * a * x * x + a * a)) / 2.0);
+    return posY;
 }
